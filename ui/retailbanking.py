@@ -4,15 +4,18 @@ import json
 import logging
 
 # =====================================================
-# RetailBanking AI Wealth Advisor Configuration
+# Configuration
 # =====================================================
 
 APP_NAME = "RetailBanking_Personalized_Advisor"
-API_URL = "http://localhost:8000/query"
+
+QUERY_API = "http://localhost:8000/query"
+
+UPLOAD_API = "http://localhost:8000/upload"
 
 
 # =====================================================
-# Logging Configuration
+# Logging
 # =====================================================
 
 logging.basicConfig(
@@ -25,197 +28,194 @@ logger = logging.getLogger("RetailBankingAdvisor")
 
 
 # =====================================================
-# Streamlit Page Setup
+# Streamlit Configuration
 # =====================================================
 
 st.set_page_config(
-    page_title="RetailBanking AI Wealth Advisor", page_icon="◆", layout="wide"
+    page_title="RetailBanking AI Wealth Advisor", page_icon="💬", layout="wide"
 )
 
 
 # =====================================================
-# UI Styling
+# Load CSS
 # =====================================================
 
-st.markdown(
-    """
-    <style>
 
-    .stApp {
-        background: linear-gradient(
-            135deg,
-            #f5f8fc,
-            #eaf1f8
-        );
-    }
-
-    .title {
-        font-size: 42px;
-        font-weight: 700;
-        color: #0B2E4F;
-        text-align: center;
-        margin-bottom: 5px;
-    }
-
-    .subtitle {
-        font-size: 18px;
-        color: #526777;
-        text-align: center;
-        margin-bottom: 35px;
-    }
-
-
-    h3 {
-        color: #0B2E4F;
-        font-weight: 700;
-    }
-
-
-    textarea {
-        border-radius: 12px !important;
-        border: 1px solid #B7C9DA !important;
-        background-color: white !important;
-        font-size: 15px !important;
-    }
-
-
-    .stButton button {
-
-        background: linear-gradient(
-            90deg,
-            #0B2E4F,
-            #1F6F9F
-        );
-
-        color:white;
-
-        border-radius:10px;
-
-        height:45px;
-
-        font-size:16px;
-
-        font-weight:600;
-
-        width:100%;
-
-        border:none;
-
-    }
-
-
-    .stButton button:hover {
-
-        background: linear-gradient(
-            90deg,
-            #1F6F9F,
-            #0B2E4F
-        );
-
-    }
-
-
-    .result {
-
-        background:white;
-
-        padding:25px;
-
-        border-radius:15px;
-
-        border-left:6px solid #1F6F9F;
-
-        box-shadow:
-        0px 5px 18px rgba(0,0,0,0.08);
-
-    }
-
-
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-# =====================================================
-# Header
-# =====================================================
-
-st.markdown(
-    "<div class='title'>RetailBanking AI Wealth Advisor</div>", unsafe_allow_html=True
-)
-
-st.markdown(
-    """
-    <div class='subtitle'>
-    Intelligent customer-focused financial advisory powered by AI, 
-    retrieval intelligence, and personalized recommendations.
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-logger.info("RetailBanking Advisor application started")
-
-
-# =====================================================
-# Input Section
-# =====================================================
-
-left, right = st.columns([1, 1], gap="large")
-
-
-with left:
-
-    st.markdown("### Customer Profile")
-
-    customer_profile = st.text_area(
-        "Customer JSON Input",
-        placeholder="Paste customer profile JSON here...",
-        height=350,
-    )
-
-
-with right:
-
-    st.markdown("### Customer Financial Query")
-
-    question = st.text_area(
-        "Query", placeholder="Enter customer financial question...", height=200
-    )
-
-
-# =====================================================
-# Recommendation Request
-# =====================================================
-
-st.write("")
-
-
-if st.button("Generate Personalized Recommendation"):
-
-    logger.info("RetailBanking recommendation request initiated")
-
-    if not customer_profile.strip():
-
-        st.warning("Please provide customer profile JSON.")
-
-        logger.warning("Request rejected - missing customer profile")
-
-        st.stop()
-
-    if not question.strip():
-
-        st.warning("Please enter customer financial query.")
-
-        logger.warning("Request rejected - missing query")
-
-        st.stop()
+def load_css(file):
 
     try:
 
-        profile = json.loads(customer_profile)
+        with open(file) as f:
+
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+    except Exception:
+
+        logger.warning("CSS file not found")
+
+
+load_css("styles.css")
+
+
+# =====================================================
+# Session State
+# =====================================================
+
+if "cancel_request" not in st.session_state:
+
+    st.session_state.cancel_request = False
+
+
+# =====================================================
+# Sidebar Navigation
+# =====================================================
+
+page = st.sidebar.radio("Navigation", ["AI Advisor", "PDF Knowledge Upload"])
+
+
+# =====================================================
+# PDF Upload Page
+# =====================================================
+
+if page == "PDF Knowledge Upload":
+
+    st.markdown("<div class='title'>PDF Knowledge Upload</div>", unsafe_allow_html=True)
+
+    st.markdown(
+        """
+        <div class="subtitle">
+        Upload PDF documents for advisor knowledge enrichment
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    uploaded_files = st.file_uploader(
+        "Upload PDF Documents", type=["pdf"], accept_multiple_files=True
+    )
+
+    if st.button("Upload PDF", use_container_width=False):
+
+        if not uploaded_files:
+
+            st.warning("Please select PDF file(s)")
+
+            st.stop()
+
+        files = []
+
+        for file in uploaded_files:
+
+            files.append(("files", (file.name, file.getvalue(), "application/pdf")))
+
+        try:
+
+            with st.spinner("Uploading documents..."):
+
+                response = requests.post(UPLOAD_API, files=files, timeout=300)
+
+            if response.status_code == 200:
+
+                st.success("PDF uploaded successfully")
+
+                try:
+
+                    st.json(response.json())
+
+                except:
+
+                    st.write(response.text)
+
+            else:
+
+                st.error(response.text)
+
+        except requests.exceptions.ConnectionError:
+
+            st.error("Unable to connect to upload service")
+
+        except Exception as e:
+
+            st.error(str(e))
+
+
+# =====================================================
+# AI Advisor Chat Page
+# =====================================================
+
+else:
+
+    st.markdown(
+        "<div class='title'>RetailBanking AI Wealth Advisor</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div class="subtitle">
+        Your intelligent financial advisory assistant
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # =================================================
+    # Small Customer Context
+    # =================================================
+
+    customer_profile = st.text_area(
+        "Customer Context (Optional)",
+        placeholder='{"customer_id":"123","age":35}',
+        height=55,
+    )
+
+    # =================================================
+    # Retailbanking Style Question Box
+    # =================================================
+
+    question = st.text_area(
+        "Query", placeholder="Ask your financial question here...", height=220
+    )
+
+    col1, col2 = st.columns([5, 1])
+
+    with col1:
+
+        Advise = st.button("Advise", use_container_width=True)
+
+    with col2:
+
+        stop = st.button("Stop", use_container_width=True)
+
+    if stop:
+
+        st.session_state.cancel_request = True
+
+        st.warning("Request stopped")
+
+    if Advise:
+
+        st.session_state.cancel_request = False
+
+        if not question.strip():
+
+            st.warning("Please enter your question")
+
+            st.stop()
+
+        profile = None
+
+        if customer_profile.strip():
+
+            try:
+
+                profile = json.loads(customer_profile)
+
+            except:
+
+                st.error("Customer JSON is invalid")
+
+                st.stop()
 
         payload = {
             "application": APP_NAME,
@@ -223,51 +223,66 @@ if st.button("Generate Personalized Recommendation"):
             "question": question,
         }
 
-        logger.info(
-            "Sending RetailBanking request for customer: %s",
-            profile.get("customer_id", "UNKNOWN"),
-        )
+        logger.info("Query submitted")
 
-        with st.spinner("Generating personalized financial recommendation..."):
+        try:
 
-            response = requests.post(API_URL, json=payload, timeout=120)
+            with st.spinner("Generating response..."):
 
-        if response.status_code == 200:
+                response = requests.post(QUERY_API, json=payload, timeout=300)
 
-            logger.info("Recommendation generated successfully")
+            if st.session_state.cancel_request:
 
-            st.markdown("### Advisory Recommendation")
+                st.info("Request cancelled")
 
-            st.markdown("<div class='result'>", unsafe_allow_html=True)
+                st.stop()
 
-            result = response.json()
+            if response.status_code == 200:
 
-            st.write(result)
+                result = response.json()
 
-            st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown("### AI Recommendation")
 
-        else:
+                st.markdown("<div class='result'>", unsafe_allow_html=True)
 
-            logger.error("API failure: %s", response.status_code)
+                if isinstance(result, dict):
 
-            st.error("RetailBanking service unavailable.")
+                    if "answer" in result:
 
-            st.write(response.text)
+                        st.markdown(result["answer"])
 
-    except json.JSONDecodeError:
+                    elif "response" in result:
 
-        logger.error("Invalid customer JSON")
+                        st.markdown(result["response"])
 
-        st.error("Customer profile JSON is invalid.")
+                    elif "recommendation" in result:
 
-    except requests.exceptions.ConnectionError:
+                        st.markdown(result["recommendation"])
 
-        logger.error("FastAPI connection failed")
+                    else:
 
-        st.error("Unable to connect to RetailBanking Advisor API.")
+                        st.json(result)
 
-    except Exception as e:
+                else:
 
-        logger.exception("Unexpected error")
+                    st.write(result)
 
-        st.error(str(e))
+                st.markdown("</div>", unsafe_allow_html=True)
+
+                logger.info("Response generated successfully")
+
+            else:
+
+                st.error("Advisor API error")
+
+                st.write(response.text)
+
+        except requests.exceptions.ConnectionError:
+
+            st.error("Unable to connect to advisor service")
+
+        except Exception as e:
+
+            logger.exception("Unexpected error")
+
+            st.error(str(e))

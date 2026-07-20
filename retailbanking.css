@@ -1,0 +1,430 @@
+/* =====================================================
+   RetailBanking AI Wealth Advisor
+   Premium Banking + Advise Layout
+===================================================== */
+
+
+/* ===============================
+   Global
+=============================== */
+
+.stApp {
+
+    background:
+        linear-gradient(180deg,
+            #EAF4FF 0%,
+            #F8FBFF 50%,
+            #FFFFFF 100%);
+
+    font-family:
+        "Inter",
+        "Segoe UI",
+        Arial,
+        sans-serif;
+
+}
+
+
+.block-container {
+
+    max-width: 1050px;
+
+    padding-top: 0.5rem;
+
+    padding-bottom: 1rem;
+
+}
+
+
+
+/* ===============================
+   Center Header
+=============================== */
+
+
+/* Streamlit markdown wrapper */
+
+div[data-testid="stMarkdownContainer"] {
+
+    width: 100%;
+
+}
+
+
+
+.title {
+
+    width: 100%;
+
+    text-align: center !important;
+
+    font-size: 46px;
+
+    font-weight: 850;
+
+    color: #145DA0;
+
+    letter-spacing: -0.8px;
+
+    line-height: 1.2;
+
+    margin:
+
+        0 auto 8px auto;
+
+}
+
+
+
+.subtitle {
+
+    width: 100%;
+
+    text-align: center !important;
+
+    font-size: 17px;
+
+    font-weight: 500;
+
+    color: #526777;
+
+    margin:
+
+        0 auto 30px auto;
+
+}
+
+
+
+/* ===============================
+   Section Labels
+=============================== */
+
+
+/* Text area labels */
+
+div[data-testid="stTextArea"] label {
+
+
+    display: block;
+
+
+    color: #123B63 !important;
+
+
+    font-size: 15px !important;
+
+
+    font-weight: 800 !important;
+
+
+    margin-bottom: 6px !important;
+
+
+
+}
+
+
+
+/* File uploader label */
+
+[data-testid="stFileUploader"] label {
+
+
+    color: #123B63 !important;
+
+
+    font-size: 15px !important;
+
+
+    font-weight: 800 !important;
+
+
+}
+
+
+
+/* ===============================
+   Customer Context Box
+=============================== */
+
+
+div[data-testid="stTextArea"]:first-of-type {
+
+
+    margin-bottom: 12px;
+
+
+}
+
+
+
+div[data-testid="stTextArea"]:first-of-type textarea {
+
+
+    height: 50px !important;
+
+
+    min-height: 50px !important;
+
+
+    border-radius: 10px !important;
+
+
+    border: 1px solid #B9D8F5 !important;
+
+
+    background: #FFFFFF !important;
+
+
+    font-size: 13px !important;
+
+
+    padding: 8px !important;
+
+
+
+}
+
+
+
+/* ===============================
+   Query Chat Box
+=============================== */
+
+
+div[data-testid="stTextArea"]:nth-of-type(2) {
+
+
+    margin-top: 8px;
+
+
+    margin-bottom: 12px;
+
+
+}
+
+
+
+div[data-testid="stTextArea"]:nth-of-type(2) textarea {
+
+
+    height: 150px !important;
+
+
+    min-height: 150px !important;
+
+
+    border-radius: 16px !important;
+
+
+    border: 1px solid #B4D4F4 !important;
+
+
+    background: #FFFFFF !important;
+
+
+    font-size: 15px !important;
+
+
+    padding: 15px !important;
+
+
+    line-height: 1.6;
+
+
+    box-shadow:
+
+        0 5px 15px rgba(14, 116, 214, .12);
+
+
+
+}
+
+
+
+/* Focus */
+
+.stTextArea textarea:focus {
+
+
+    border: 2px solid #1677FF !important;
+
+
+    box-shadow:
+
+        0 0 12px rgba(22, 119, 255, .25);
+
+
+
+}
+
+
+
+/* ===============================
+   Buttons
+=============================== */
+
+
+.stButton>button {
+
+
+    height: 36px;
+
+
+    border-radius: 18px;
+
+
+    border: none;
+
+
+    background:
+
+        linear-gradient(90deg,
+            #0B63CE,
+            #1677FF);
+
+
+    color: white;
+
+
+    font-size: 13px;
+
+
+    font-weight: 700;
+
+
+
+}
+
+
+
+.stButton>button:hover {
+
+
+    background:
+
+        linear-gradient(90deg,
+            #084C9E,
+            #0B63CE);
+
+
+}
+
+
+
+/* Stop Button */
+
+div[data-testid="column"]:nth-child(2) .stButton>button {
+
+
+    background:
+
+        linear-gradient(90deg,
+            #64748B,
+            #94A3B8);
+
+
+}
+
+
+
+/* ===============================
+   AI Response Panel
+=============================== */
+
+
+.result {
+
+
+    background: #FFFFFF;
+
+
+    border-radius: 18px;
+
+
+    padding: 22px;
+
+
+    margin-top: 18px;
+
+
+    border-left:
+
+        6px solid #1677FF;
+
+
+    border-top:
+
+        1px solid #D7E8F8;
+
+
+    border-right:
+
+        1px solid #D7E8F8;
+
+
+    border-bottom:
+
+        1px solid #D7E8F8;
+
+
+    font-size: 15px;
+
+
+    line-height: 1.7;
+
+
+    color: #1F2937;
+
+
+    box-shadow:
+
+        0 8px 20px rgba(14, 116, 214, .12);
+
+
+}
+
+
+
+/* ===============================
+   Upload Page
+=============================== */
+
+
+[data-testid="stFileUploader"] {
+
+
+    background: #FFFFFF;
+
+
+    border: 2px dashed #1677FF;
+
+
+    border-radius: 16px;
+
+
+    padding: 20px;
+
+
+}
+
+
+
+/* ===============================
+   Reduce Streamlit Empty Space
+=============================== */
+
+
+div[data-testid="stVerticalBlock"] {
+
+    gap: 0.2rem;
+
+}
+
+
+div[data-testid="stMarkdownContainer"] p {
+
+    margin-bottom: 5px;
+
+}
