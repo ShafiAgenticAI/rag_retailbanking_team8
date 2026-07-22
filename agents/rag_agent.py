@@ -3,93 +3,133 @@ from dotenv import load_dotenv
 from app.tools.tools import _search_vector, _search_fts, _search_hybrid
 from pydantic import BaseModel, Field
 from typing import List
+import uuid
 
 # load env variables
-load_dotenv()
+if not load_dotenv():
+    print("No .env file found.")
 
-class Citation(BaseModel):
-    source: str
-    page: str
+# Session ID
+try:
+    session_id = str(uuid.uuid4())
+except Exception as e:
+    print(f"Failed to generate session id: {e}")
 
-class Recommendation(BaseModel):
-    title: str
-    description: str
-    priority: str
 
-class RiskAssessment(BaseModel):
-    risk_level: str
-    explanation: str
+class Metadata(BaseModel):
+    page_number: int
+    file_name: str
+    file_extension: str
+
+class Retrieved_Chunks(BaseModel):
+    content: str
+    metadata: Metadata
+
 
 class FinancialAdvice(BaseModel):
-    summary: str = Field(description="Short summary of customer's financial situation")
-    financial_health: str = Field(description="Assessment of the customer's current financial health")
-    strengths: List[str]
-    concerns: List[str]
-    recommendations: List[Recommendation]
-    risk_assessment: RiskAssessment
-    reasoning: str = Field(description="Why these recommendation were given")
-    citations: List[Citation]
+    User_Query: str = Field(description="customer query")
+    customer_profile: str
+    output_response: str = Field(description="recommendation provided")
+    retrieved_chunks: List[Retrieved_Chunks]
+
+prompt = """ 
+            You are an expert Financial Advisor.
+
+            You have access to the following retrieval tools:
+
+            1. _search_vector
+            Use for semantic, conceptual, "why", or "how" questions.
+
+            2. _search_fts
+            Use for keyword or exact-term queries (for example: SIP, FD, ROI).
+
+            3. _search_hybrid
+            Use when both semantic understanding and exact keyword matching are required.
+
+            Routing rules:
+            - Always use exactly one search tool.
+            - Always pass:
+            - query = user's question
+            - k = 5
+            - collection_name = "retailbanking_knowledge_base"
+             
+            The retrieval results contain financial FAQs along with document metadata.
+
+            You will also receive customer financial information in JSON format.
+
+            Your task:
+
+            1. Retrieve the most relevant FAQ information.
+            2. Analyze the customer's financial profile using the provided JSON.
+            3. Answer the user's financial question by combining the retrieved information with the customer's profile.
+            4. Personalize recommendations only when supported by the retrieved information or the customer data.
+            5. If the retrieved information is insufficient, explicitly say so instead of making assumptions.
+
+            Response guidelines:
+            - Answer only the user's question.
+            - Be concise and direct.
+            - Do not explain your reasoning or analysis process.
+            - Do not repeat information.
+            - Do not include section headings unless the user requests them.
+            - Do not provide background information unless it is necessary to answer the question.
+            - Limit the response to 3-6 short sentences (or 5 bullet points if a list is more appropriate).
+            - Include only actionable recommendations that are directly relevant to the user's question.
+
+            Only answer financial questions. If the request is unrelated to finance, politely decline.
+
+            """
 
 def create_rag_agent():
-    financial_agent = create_agent(
-        model="openai:gpt-5.5",  # brain
-        tools=[_search_vector, _search_fts, _search_hybrid],  # register tool
-        response_format=FinancialAdvice,
-        system_prompt=""" 
-            You are an intelligent Customer 360 Financial Advisor. 
-
-            You have access to three retrieval tools:
-            1. _search_vector - use for semantic questions.
-            2. _search_fts - use for keyword based questions.
-            3. _search_hybrid - use when both semantic understanding and exact keyword matching are important.
-
-            rules:
-            - always choose exactly one search tool.
-            - always pass:
-            query = user's question
-            k=5
-            collection_name="retailbanking_knowledge_base"
-             
-            The retrieved context contains financial FAQs.
-
-            You will also receive customer financial information in json.
-
-            Your job is to:
-
-            1. Retrieve relevant FAQ information using one search tool.
-            2. Analyze the customer's financial profile.
-            3. Combine both sources of information.
-            4. Provide practical, personalized financial advice.
-            5. If the retreived FAQ does not contain enough information, state that clearly instead of inventing facts.
-            6. At the end of your response include citation section listing the metadata of every document used.
-            7. Do not fabricate  citations, only cite metadata returned by the retrieval tool.
-
-            Do not accept any other requests.
-            """,  # role
-    )
-    return financial_agent
+    try:
+        financial_agent = create_agent(
+            model="openai:gpt-5.5",  # brain
+            tools=[_search_vector, _search_fts, _search_hybrid],  # register tool
+            response_format=FinancialAdvice,
+            system_prompt=prompt,  # role
+        )
+        return financial_agent
+    except Exception as e:
+        print(f"Failed to create RAG agent: {e}")
 
 def call_agent(question, customer_details):
-    agent = create_rag_agent()
+    try:
+        agent = create_rag_agent()
 
-    response = agent.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": f"""
-                    User question: {question}
-                    Customer financial details in json :{customer_details}
-                    
-                    """,
-                }
-            ]
-        }
-    )
+        response = agent.invoke(
+            {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": f"""
+                        User question: {question}
+                        Customer financial details in json :{customer_details}
+                        
+                        """,
+                    }
+                ]
+            },
+            config={
+                "configurable": {"session_id": session_id},
+                "run_name": "retailbanking_knowledge_base",
+                "tags": ["chatbot", "user-query"],
+                "metadata": {
+                    "user_id": "user_001",
+                    "session_id": session_id,
+                    "interface": "cli",
+                },
+            },
+        )
 
-    return response["structured_response"]
+        output = response["structured_response"]
+        return output
+
+    except Exception as e:
+        print(f"Failed to invoke agent : {e}")
+        return{"status": "error","message": str(e)}
+
 
 question = """Should I invest in FD or debt funds for buying a car in 2 years?"""
+# question = """Tell about mutual funds"""
 
 customer_details = {
     "customer_id": "CUST001",
@@ -104,8 +144,7 @@ customer_details = {
     "credit_score": 750,
 }
 
-res = call_agent(question, customer_details)   # call agent
-print(res)
-# print(response["messages"][-1].text)
-# print(news.model_dump_json(indent=2))
+result = call_agent(question, customer_details)  # call agent
+print(result.model_dump_json(indent=2))
+
 # uv run python -m app.agents.rag_agent
