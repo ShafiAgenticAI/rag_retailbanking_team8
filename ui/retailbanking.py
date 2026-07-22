@@ -1,288 +1,294 @@
-import streamlit as st
-import requests
 import json
-import logging
+import requests
+import streamlit as ui
 
-# =====================================================
-# Configuration
-# =====================================================
+# ==========================================================
+# Application Configuration
+# ==========================================================
 
-APP_NAME = "RetailBanking_Personalized_Advisor"
+SERVER_URL = "http://127.0.0.1:8000"
 
-QUERY_API = "http://localhost:8000/query"
-
-UPLOAD_API = "http://localhost:8000/upload"
-
-
-# =====================================================
-# Logging
-# =====================================================
-
-logging.basicConfig(
-    filename="retailbanking_advisor.log",
-    level=logging.INFO,
-    format="%(asctime)s | RETAILBANKING | %(levelname)s | %(message)s",
-)
-
-logger = logging.getLogger("RetailBankingAdvisor")
+DOCUMENT_UPLOAD_ENDPOINT = f"{SERVER_URL}/api/v1/upload/"
+COMPLIANCE_QUERY_ENDPOINT = f"{SERVER_URL}/api/v1/query"
 
 
-# =====================================================
-# Streamlit Configuration
-# =====================================================
+# ==========================================================
+# Streamlit Page Setup
+# ==========================================================
 
-st.set_page_config(
-    page_title="RetailBanking AI Wealth Advisor", page_icon="💬", layout="wide"
+ui.set_page_config(
+    page_title="Retail Banking Compliance Intelligence",
+    page_icon="🏦",
+    layout="wide",
 )
 
 
-# =====================================================
-# Load CSS
-# =====================================================
+ui.title("🏦 Retail Banking Compliance Intelligence")
+
+ui.caption(
+    "Review document with Json details provide, "
+    " receive suggested compliance insights from AI."
+)
 
 
-def load_css(file):
+# ==========================================================
+# Session Initialization
+# ==========================================================
+
+if "chat_history" not in ui.session_state:
+    ui.session_state.chat_history = []
+
+
+# ==========================================================
+# Backend Communication Functions
+# ==========================================================
+
+
+def send_compliance_question(question, context):
+    """
+    Submit compliance question and optional context to backend.
+    """
+
+    request_body = {
+        "question": question,
+        "input_json": context,
+    }
+
+    return requests.post(
+        COMPLIANCE_QUERY_ENDPOINT,
+        json=request_body,
+    )
+
+
+def upload_document(document):
+    """
+    Upload regulatory document for processing.
+    """
+
+    upload_payload = {
+        "file": (
+            document.name,
+            document,
+            "application/pdf",
+        )
+    }
+
+    return requests.post(
+        DOCUMENT_UPLOAD_ENDPOINT,
+        files=upload_payload,
+    )
+
+
+# ==========================================================
+# Data Processing Helpers
+# ==========================================================
+
+
+def extract_json_context(raw_text):
+    """
+    Convert user-provided JSON text into Python object.
+    """
+
+    if not raw_text.strip():
+        return None
 
     try:
+        return json.loads(raw_text)
 
-        with open(file) as f:
-
-            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-
-    except Exception:
-
-        logger.warning("CSS file not found")
+    except json.JSONDecodeError:
+        return None
 
 
-load_css("styles.css")
+def show_document_reference(reference, number):
+    """
+    Render source document details and extracted content.
+    """
 
-
-# =====================================================
-# Session State
-# =====================================================
-
-if "cancel_request" not in st.session_state:
-
-    st.session_state.cancel_request = False
-
-
-# =====================================================
-# Sidebar Navigation
-# =====================================================
-
-page = st.sidebar.radio("Navigation", ["AI Advisor", "PDF Knowledge Upload"])
-
-
-# =====================================================
-# PDF Upload Page
-# =====================================================
-
-if page == "PDF Knowledge Upload":
-
-    st.markdown("<div class='title'>PDF Knowledge Upload</div>", unsafe_allow_html=True)
-
-    st.markdown(
-        """
-        <div class="subtitle">
-        Upload PDF documents for advisor knowledge enrichment
-        </div>
-        """,
-        unsafe_allow_html=True,
+    document_name = reference.get(
+        "file_name",
+        "Unnamed Document",
     )
 
-    uploaded_files = st.file_uploader(
-        "Upload PDF Documents", type=["pdf"], accept_multiple_files=True
-    )
+    with ui.expander(f"📄 Reference {number}: {document_name}"):
 
-    if st.button("Upload PDF", use_container_width=False):
-
-        if not uploaded_files:
-
-            st.warning("Please select PDF file(s)")
-
-            st.stop()
-
-        files = []
-
-        for file in uploaded_files:
-
-            files.append(("files", (file.name, file.getvalue(), "application/pdf")))
-
-        try:
-
-            with st.spinner("Uploading documents..."):
-
-                response = requests.post(UPLOAD_API, files=files, timeout=300)
-
-            if response.status_code == 200:
-
-                st.success("PDF uploaded successfully")
-
-                try:
-
-                    st.json(response.json())
-
-                except:
-
-                    st.write(response.text)
-
-            else:
-
-                st.error(response.text)
-
-        except requests.exceptions.ConnectionError:
-
-            st.error("Unable to connect to upload service")
-
-        except Exception as e:
-
-            st.error(str(e))
-
-
-# =====================================================
-# AI Advisor Chat Page
-# =====================================================
-
-else:
-
-    st.markdown(
-        "<div class='title'>RetailBanking AI Wealth Advisor</div>",
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        """
-        <div class="subtitle">
-        Your intelligent financial advisory assistant
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # =================================================
-    # Small Customer Context
-    # =================================================
-
-    customer_profile = st.text_area(
-        "Customer Context (Optional)",
-        placeholder='{"customer_id":"123","age":35}',
-        height=55,
-    )
-
-    # =================================================
-    # Retailbanking Style Question Box
-    # =================================================
-
-    question = st.text_area(
-        "Query", placeholder="Ask your financial question here...", height=220
-    )
-
-    col1, col2 = st.columns([5, 1])
-
-    with col1:
-
-        Advise = st.button("Advise", use_container_width=True)
-
-    with col2:
-
-        stop = st.button("Stop", use_container_width=True)
-
-    if stop:
-
-        st.session_state.cancel_request = True
-
-        st.warning("Request stopped")
-
-    if Advise:
-
-        st.session_state.cancel_request = False
-
-        if not question.strip():
-
-            st.warning("Please enter your question")
-
-            st.stop()
-
-        profile = None
-
-        if customer_profile.strip():
-
-            try:
-
-                profile = json.loads(customer_profile)
-
-            except:
-
-                st.error("Customer JSON is invalid")
-
-                st.stop()
-
-        payload = {
-            "application": APP_NAME,
-            "customer_profile": profile,
-            "question": question,
+        details = {
+            "Document": reference.get("file_name"),
+            "Reference ID": reference.get("document_id"),
+            "Page": reference.get("page_number"),
+            "Section": reference.get("section_number"),
+            "Category": reference.get("regulation_type"),
+            "Search Approach": reference.get("retrieval_method"),
+            "Semantic Match Score": reference.get("vector_score"),
+            "Keyword Match Score": reference.get("fts_score"),
+            "Combined Score": reference.get("hybrid_score"),
         }
 
-        logger.info("Query submitted")
+        ui.markdown("#### 📋 Document Details")
 
-        try:
+        ui.json(details)
 
-            with st.spinner("Generating response..."):
+        ui.markdown("#### 📝 Extracted Content")
 
-                response = requests.post(QUERY_API, json=payload, timeout=300)
+        ui.info(
+            reference.get(
+                "snippet",
+                "No relevant text available.",
+            )
+        )
 
-            if st.session_state.cancel_request:
 
-                st.info("Request cancelled")
+# ==========================================================
+# Document Upload Panel
+# ==========================================================
 
-                st.stop()
+with ui.sidebar:
 
-            if response.status_code == 200:
+    ui.header("📁 Retail Banking Knowledge base")
 
-                result = response.json()
+    uploaded_file = ui.file_uploader(
+        "Choose PDF file",
+        type=["pdf"],
+    )
 
-                st.markdown("### AI Recommendation")
+    if uploaded_file:
 
-                st.markdown("<div class='result'>", unsafe_allow_html=True)
+        if ui.button(
+            "⬆️ Process Document",
+            use_container_width=True,
+        ):
 
-                if isinstance(result, dict):
+            with ui.spinner("Preparing document for analysis..."):
 
-                    if "answer" in result:
+                upload_result = upload_document(uploaded_file)
 
-                        st.markdown(result["answer"])
+                if upload_result.ok:
 
-                    elif "response" in result:
-
-                        st.markdown(result["response"])
-
-                    elif "recommendation" in result:
-
-                        st.markdown(result["recommendation"])
-
-                    else:
-
-                        st.json(result)
+                    ui.success("Document processed and added to the knowledge base.")
 
                 else:
 
-                    st.write(result)
+                    ui.error(upload_result.text)
 
-                st.markdown("</div>", unsafe_allow_html=True)
 
-                logger.info("Response generated successfully")
+# ==========================================================
+# Previous Conversation Display
+# ==========================================================
+
+for message in ui.session_state.chat_history:
+
+    with ui.chat_message(message["role"]):
+
+        ui.markdown(message["message"])
+
+
+# ==========================================================
+# Optional Structured Context
+# ==========================================================
+
+ui.markdown("###### 📑 JSON Context (Optional)")
+
+
+json_text = ui.text_area(
+    "Enter structured information",
+    height=100,
+    placeholder="""
+{
+    "organization": "Retail Banking",
+    "assessment_type": "Regulatory Review",
+    "priority": "High"
+}
+""",
+)
+
+
+structured_context = extract_json_context(json_text)
+
+
+if json_text.strip():
+
+    if structured_context is None:
+
+        ui.warning("⚠️ The JSON format is not valid. Please review the structure.")
+
+    else:
+
+        ui.success("✅ Structured context accepted.")
+
+
+# ==========================================================
+# Compliance Conversation
+# ==========================================================
+
+user_question = ui.chat_input("Enter your query...")
+
+
+if user_question:
+
+    ui.session_state.chat_history.append(
+        {
+            "role": "user",
+            "message": user_question,
+        }
+    )
+
+    with ui.chat_message(
+        "user",
+        avatar="👤",
+    ):
+
+        ui.markdown(user_question)
+
+    with ui.chat_message(
+        "assistant",
+        avatar="🤖",
+    ):
+
+        with ui.spinner(" Json information Review..."):
+
+            response = send_compliance_question(
+                user_question,
+                structured_context,
+            )
+
+            if response.ok:
+
+                response_data = response.json()
+
+                assistant_reply = response_data.get(
+                    "answer",
+                    "Unable to generate a response.",
+                )
+
+                ui.markdown(assistant_reply)
+
+                supporting_documents = response_data.get(
+                    "sources",
+                    [],
+                )
+
+                if supporting_documents:
+
+                    ui.markdown("### 📚 Regulatory References")
+
+                    for position, document in enumerate(
+                        supporting_documents,
+                        start=1,
+                    ):
+
+                        show_document_reference(
+                            document,
+                            position,
+                        )
+
+                ui.session_state.chat_history.append(
+                    {
+                        "role": "assistant",
+                        "message": assistant_reply,
+                    }
+                )
 
             else:
 
-                st.error("Advisor API error")
+                ui.error(f"Unable to complete request ({response.status_code})")
 
-                st.write(response.text)
-
-        except requests.exceptions.ConnectionError:
-
-            st.error("Unable to connect to advisor service")
-
-        except Exception as e:
-
-            logger.exception("Unexpected error")
-
-            st.error(str(e))
+                ui.code(response.text)
