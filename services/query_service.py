@@ -1,69 +1,24 @@
-from agents.rag_agent import create_agent
-
+from app.agents.rag_agent import call_agent
 
 
 class QueryService:
 
+    @staticmethod
+    def process_query(request):
 
-    def __init__(self):
-
-        self.agent = create_agent()
-
-
-
-    async def ask(
-            self,
-            request
-    ):
-
-
-        customer_id = request.customer_id
-
-        question = request.question
-
-
-
-        #
-        # Future PostgreSQL call
-        #
-        # customer_profile =
-        # get_customer_profile(customer_id)
-        #
-
-
-
-        payload = {
-
-
-            "customer_id":
-            customer_id,
-
-
-            "question":
-            question
-
-        }
-
-
-
-        result = self.agent.invoke(
-            payload
+        response = call_agent(
+            question=request.question, customer_details=request.input_json
         )
 
-
-
         return {
-
-
-            "status":
-            "SUCCESS",
-
-
-            "customer_id":
-            customer_id,
-
-
-            "response":
-            result
-
+            "answer": response.output_response,
+            "sources": [
+                {
+                    "file_name": chunk.metadata.file_name,
+                    "page_number": chunk.metadata.page_number,
+                    "snippet": chunk.content,
+                    "file_extension": chunk.metadata.file_extension,
+                }
+                for chunk in response.retrieved_chunks
+            ],
         }

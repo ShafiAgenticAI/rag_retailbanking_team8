@@ -1,91 +1,27 @@
-import os
-import uuid
+from pathlib import Path
 import shutil
 
-
-from ingestion.ingestion import ingest_document
-
+from app.ingestion.ingestion import ingest_retailbankingpdf
 
 
 class UploadService:
 
+    DATA_FOLDER = Path("rag_retailbanking_team8/data")
 
-    DATA_FOLDER = "data"
+    @classmethod
+    def upload_pdf(cls, uploaded_file):
 
+        cls.DATA_FOLDER.mkdir(parents=True, exist_ok=True)
 
+        destination = cls.DATA_FOLDER / uploaded_file.filename
 
-    async def upload(
-            self,
-            file,
-            customer_id
-    ):
+        with destination.open("wb") as buffer:
+            shutil.copyfileobj(uploaded_file.file, buffer)
 
-
-        os.makedirs(
-            self.DATA_FOLDER,
-            exist_ok=True
-        )
-
-
-        document_id = str(uuid.uuid4())
-
-
-        filename = (
-            document_id 
-            + "_"
-            + file.filename
-        )
-
-
-        file_path = os.path.join(
-            self.DATA_FOLDER,
-            filename
-        )
-
-
-        # Save file
-
-        with open(
-            file_path,
-            "wb"
-        ) as buffer:
-
-            shutil.copyfileobj(
-                file.file,
-                buffer
-            )
-
-
-        #
-        # Future PostgreSQL call
-        #
-        # save document metadata
-        #
-        # document_id
-        # customer_id
-        # filename
-        # upload_date
-        #
-
-
-        ingestion_result = ingest_document(
-            file_path,
-            customer_id,
-            document_id
-        )
-
+        ingest_retailbankingpdf(str(destination))
 
         return {
-
-            "status":
-            "SUCCESS",
-
-            "document_id":
-            document_id,
-
-            "file":
-            filename,
-
-            "ingestion":
-            ingestion_result
+            "status": "success",
+            "message": "Document uploaded successfully.",
+            "file_name": uploaded_file.filename,
         }

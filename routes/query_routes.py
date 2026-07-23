@@ -1,50 +1,22 @@
-from dataclasses import dataclass
-from fastapi import (
-    APIRouter,
-    HTTPException
-)
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import Optional, Dict
 
-from services.query_service import QueryService
+from app.services.query_service import QueryService
 
-
-
-router = APIRouter(
-    prefix="/api/query",
-    tags=["Query"]
-)
+router = APIRouter(prefix="/api/v1", tags=["Query"])
 
 
-
-query_service = QueryService()
-
-
-
-@dataclass
-class QueryRequest:
-
-    customer_id: str
-
+class QueryRequest(BaseModel):
     question: str
+    input_json: Optional[Dict] = None
 
 
-
-@router.post("/")
-async def ask_question(
-        request: QueryRequest
-):
+@router.post("/query")
+async def query(request: QueryRequest):
 
     try:
+        return QueryService.process_query(request)
 
-        response = await query_service.ask(
-            request
-        )
-
-        return response
-
-
-    except Exception as e:
-
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=str(ex))
