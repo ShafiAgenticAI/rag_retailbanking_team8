@@ -3,7 +3,7 @@ from rag_retailbanking_team8.ingestion.ingestion import ingest_retailbankingpdf
 
 
 def handle_file_upload(filename, file_bytes):
-    destination = f"project1/data/{filename}"
+    destination = f"rag_retailbanking_team8/data/{filename}"
 
     with open(destination, "wb") as f:
         f.write(file_bytes)

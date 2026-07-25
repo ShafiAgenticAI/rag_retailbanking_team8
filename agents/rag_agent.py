@@ -89,7 +89,7 @@ prompt = """
 def create_rag_agent():
     try:
         financial_agent = create_agent(
-            model="openai:gpt-5.5",  # brain
+            model="openai:gpt-5.5",  # faster model for lower latency
             tools=[_search_vector, _search_fts, _search_hybrid],  # register tool
             response_format=FinancialAdvice,
             system_prompt=prompt,  # role
@@ -99,10 +99,18 @@ def create_rag_agent():
         print(f"Failed to create RAG agent: {e}")
 
 
-def call_agent(question, customer_details):
-    try:
-        agent = create_rag_agent()
+# Create the agent once at import time so repeated requests reuse the same instance.
+_cached_rag_agent = create_rag_agent()
 
+
+def call_agent(question, customer_details):
+    agent = _cached_rag_agent
+    if agent is None:
+        error_msg = "Failed to create RAG agent."
+        print(error_msg)
+        return {"status": "error", "message": error_msg}
+
+    try:
         response = agent.invoke(
             {
                 "messages": [
@@ -111,7 +119,6 @@ def call_agent(question, customer_details):
                         "content": f"""
                         User question: {question}
                         Customer financial details in json :{customer_details}
-                        
                         """,
                     }
                 ]

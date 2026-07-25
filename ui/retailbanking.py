@@ -56,7 +56,8 @@ def send_compliance_question(question, context):
 
     return requests.post(
         COMPLIANCE_QUERY_ENDPOINT,
-        json=request_body,
+        data=json.dumps(request_body),
+        headers={"Content-Type": "application/json"},
     )
 
 
@@ -212,7 +213,7 @@ if json_text.strip():
 
     else:
 
-        ui.success("✅ Structured context accepted.")
+        ui.info("✅ Structured context accepted.")
 
 
 # ==========================================================
@@ -243,7 +244,7 @@ if user_question:
         avatar="🤖",
     ):
 
-        with ui.spinner(" Json information Review..."):
+        with ui.spinner("Information is being reviewed and processing..."):
 
             response = send_compliance_question(
                 user_question,
@@ -252,33 +253,9 @@ if user_question:
 
             if response.ok:
 
-                response_data = response.json()
-
-                assistant_reply = response_data.get(
-                    "answer",
-                    "Unable to generate a response.",
-                )
+                assistant_reply = response.text or "Unable to generate a response."
 
                 ui.markdown(assistant_reply)
-
-                supporting_documents = response_data.get(
-                    "sources",
-                    [],
-                )
-
-                if supporting_documents:
-
-                    ui.markdown("### 📚 Regulatory References")
-
-                    for position, document in enumerate(
-                        supporting_documents,
-                        start=1,
-                    ):
-
-                        show_document_reference(
-                            document,
-                            position,
-                        )
 
                 ui.session_state.chat_history.append(
                     {
