@@ -1,24 +1,16 @@
 from app.agents.rag_agent import call_agent
 
 
-class QueryService:
+def process_query(request):
+    """ receives query and json """
+    user_query = request.get("question","")
+    user_details = request.get("input_json",{})
 
-    @staticmethod
-    def process_query(request):
+    if not user_query:
+        return {"status":"error","message": "No user query"}
 
-        response = call_agent(
-            question=request.question, customer_details=request.input_json
-        )
+    print("passing data to agent...")
+    agent_respone = call_agent(user_query, customer_details= user_details)
 
-        return {
-            "answer": response.output_response,
-            "sources": [
-                {
-                    "file_name": chunk.metadata.file_name,
-                    "page_number": chunk.metadata.page_number,
-                    "snippet": chunk.content,
-                    "file_extension": chunk.metadata.file_extension,
-                }
-                for chunk in response.retrieved_chunks
-            ],
-        }
+    print("agent returned data...")
+    return {"status":"success","answer": agent_respone}

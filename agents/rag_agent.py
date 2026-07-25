@@ -128,23 +128,23 @@ def call_agent(question, customer_details):
         return{"status": "error","message": str(e)}
 
 
-question = """Should I invest in FD or debt funds for buying a car in 2 years?"""
-# question = """Tell about mutual funds"""
+# question = """Should I invest in FD or debt funds for buying a car in 2 years?"""
+# # question = """Tell about mutual funds"""
 
-customer_details = {
-    "customer_id": "CUST001",
-    "age": 40,
-    "income": 1200000,
-    "employment": "Salaried",
-    "risk_appetite": "Moderate",
-    "goals": [{"goal": "Car Purchase", "target_amount": 1000000, "years": 2}],
-    "existing_investments": {"equity": 300000, "debt": 200000, "fd": 100000},
-    "liabilities": {"home_loan": 2000000},
-    "monthly_expenses": 50000,
-    "credit_score": 750,
-}
+# customer_details = {
+#     "customer_id": "CUST001",
+#     "age": 40,
+#     "income": 1200000,
+#     "employment": "Salaried",
+#     "risk_appetite": "Moderate",
+#     "goals": [{"goal": "Car Purchase", "target_amount": 1000000, "years": 2}],
+#     "existing_investments": {"equity": 300000, "debt": 200000, "fd": 100000},
+#     "liabilities": {"home_loan": 2000000},
+#     "monthly_expenses": 50000,
+#     "credit_score": 750,
+# }
 
-result = call_agent(question, customer_details)  # call agent
-print(result.model_dump_json(indent=2))
+# result = call_agent(question, customer_details)  # call agent
+# print(result.model_dump_json(indent=2))
 
 # uv run python -m app.agents.rag_agent
