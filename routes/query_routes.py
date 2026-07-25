@@ -1,50 +1,22 @@
-from dataclasses import dataclass
-from fastapi import (
-    APIRouter,
-    HTTPException
-)
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import Optional, Dict
 
-from services.query_service import QueryService
+from rag_retailbanking_team8.services.query_service import process_query
 
-
-
-router = APIRouter(
-    prefix="/api/query",
-    tags=["Query"]
-)
+query_router = APIRouter(prefix="/api/v1", tags=["Query"])
 
 
-
-query_service = QueryService()
-
-
-
-@dataclass
-class QueryRequest:
-
-    customer_id: str
-
+class QueryRequest(BaseModel):
     question: str
+    input_json: Optional[Dict] = None
 
 
-
-@router.post("/")
-async def ask_question(
-        request: QueryRequest
-):
-
+@query_router.post("/query")
+async def query(request: QueryRequest):
+    request_dict = request.model_dump()
     try:
+        return process_query(request_dict)
 
-        response = await query_service.ask(
-            request
-        )
-
-        return response
-
-
-    except Exception as e:
-
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=str(ex))

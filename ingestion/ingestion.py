@@ -59,9 +59,14 @@ def ingest_retailbankingpdf(file_path):
     print("Ingestion Completed")
 
 
-ingest_retailbankingpdf(
-    "rag_retailbanking_team8/data/Personalized_Retail_Banking_FAQ.pdf"
-)
+def ingest_document(file_path, customer_id=None, document_id=None):
+    return ingest_retailbankingpdf(file_path)
+
+
+if __name__ == "__main__":
+    ingest_retailbankingpdf(
+        "rag_retailbanking_team8/data/Personalized_Retail_Banking_FAQ.pdf"
+    )
 
 # to run this try the following command (from the project root):
 # uv run python -m app.ingestion.ingestion

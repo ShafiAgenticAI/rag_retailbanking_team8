@@ -1,42 +1,19 @@
-from fastapi import (
-    APIRouter,
-    UploadFile,
-    File,
-    Form,
-    HTTPException
-)  # type: ignore
+from fastapi import APIRouter, UploadFile, File, HTTPException
 
-from services.upload_service import UploadService
+from rag_retailbanking_team8.services.upload_service import handle_file_upload
+
+upload_router = APIRouter(prefix="/api/v1", tags=["Upload"])
 
 
-router = APIRouter(
-    prefix="/api/upload",
-    tags=["Upload"]
-)
+@upload_router.post("/upload")
+async def upload_pdf(file: UploadFile = File(...)):
 
-
-upload_service = UploadService()
-
-
-@router.post("/")
-async def upload_document(
-        file: UploadFile = File(...),
-        customer_id: str = Form(...)
-):
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
     try:
+        file_bytes = await file.read()
+        return handle_file_upload(file.filename, file_bytes)
 
-        response = await upload_service.upload(
-            file,
-            customer_id
-        )
-
-        return response
-
-
-    except Exception as e:
-
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=str(ex))

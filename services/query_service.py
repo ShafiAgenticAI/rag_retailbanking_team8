@@ -1,69 +1,16 @@
-from agents.rag_agent import create_agent
+from rag_retailbanking_team8.agents.rag_agent import call_agent
 
 
+def process_query(request):
+    """receives query and json"""
+    user_query = request.get("question", "")
+    user_details = request.get("input_json", {})
 
-class QueryService:
+    if not user_query:
+        return {"status": "error", "message": "No user query"}
 
+    print("passing data to agent...")
+    agent_respone = call_agent(user_query, customer_details=user_details)
 
-    def __init__(self):
-
-        self.agent = create_agent()
-
-
-
-    async def ask(
-            self,
-            request
-    ):
-
-
-        customer_id = request.customer_id
-
-        question = request.question
-
-
-
-        #
-        # Future PostgreSQL call
-        #
-        # customer_profile =
-        # get_customer_profile(customer_id)
-        #
-
-
-
-        payload = {
-
-
-            "customer_id":
-            customer_id,
-
-
-            "question":
-            question
-
-        }
-
-
-
-        result = self.agent.invoke(
-            payload
-        )
-
-
-
-        return {
-
-
-            "status":
-            "SUCCESS",
-
-
-            "customer_id":
-            customer_id,
-
-
-            "response":
-            result
-
-        }
+    print("agent returned data...")
+    return {"status": "success", "answer": agent_respone}
