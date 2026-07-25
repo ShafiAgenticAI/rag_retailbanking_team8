@@ -1,5 +1,5 @@
 from langchain_core.tools import tool
-from app.core.db import get_retailbankingvector_store
+from rag_retailbanking_team8.core.db import get_retailbankingvector_store
 import requests
 import psycopg
 from psycopg.rows import dict_row
@@ -53,7 +53,9 @@ def _search_fts(query: str, k: int, collection_name: str):
 
         with psycopg.connect(_raw_conn, row_factory=dict_row) as conn:
             with conn.cursor() as cur:
-                cur.execute(sql, {"query": query, "collection": collection_name, "k": k})
+                cur.execute(
+                    sql, {"query": query, "collection": collection_name, "k": k}
+                )
                 rows = cur.fetchall()
 
         output = [
@@ -85,7 +87,9 @@ def _search_hybrid(query: str, k: int, collection_name: str):
         vector_search_results = _search_vector.func(
             query=query, k=5, collection_name=collection_name
         )
-        fts_results = _search_fts.func(query=query, k=5, collection_name=collection_name)
+        fts_results = _search_fts.func(
+            query=query, k=5, collection_name=collection_name
+        )
 
         rrf_scores: dict[str, float] = {}
         chunk_map: dict[str, dict] = {}

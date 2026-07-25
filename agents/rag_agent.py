@@ -1,6 +1,10 @@
 from langchain.agents import create_agent
 from dotenv import load_dotenv
-from app.tools.tools import _search_vector, _search_fts, _search_hybrid
+from rag_retailbanking_team8.tools.tools import (
+    _search_vector,
+    _search_fts,
+    _search_hybrid,
+)
 from pydantic import BaseModel, Field
 from typing import List
 import uuid
@@ -21,6 +25,7 @@ class Metadata(BaseModel):
     file_name: str
     file_extension: str
 
+
 class Retrieved_Chunks(BaseModel):
     content: str
     metadata: Metadata
@@ -31,6 +36,7 @@ class FinancialAdvice(BaseModel):
     customer_profile: str
     output_response: str = Field(description="recommendation provided")
     retrieved_chunks: List[Retrieved_Chunks]
+
 
 prompt = """ 
             You are an expert Financial Advisor.
@@ -79,6 +85,7 @@ prompt = """
 
             """
 
+
 def create_rag_agent():
     try:
         financial_agent = create_agent(
@@ -90,6 +97,7 @@ def create_rag_agent():
         return financial_agent
     except Exception as e:
         print(f"Failed to create RAG agent: {e}")
+
 
 def call_agent(question, customer_details):
     try:
@@ -125,7 +133,7 @@ def call_agent(question, customer_details):
 
     except Exception as e:
         print(f"Failed to invoke agent : {e}")
-        return{"status": "error","message": str(e)}
+        return {"status": "error", "message": str(e)}
 
 
 # question = """Should I invest in FD or debt funds for buying a car in 2 years?"""
