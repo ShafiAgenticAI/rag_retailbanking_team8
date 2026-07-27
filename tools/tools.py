@@ -85,10 +85,10 @@ def _search_hybrid(query: str, k: int, collection_name: str):
     print("Running Hybrid Search")
     try:
         vector_search_results = _search_vector.func(
-            query=query, k=5, collection_name=collection_name
+            query=query, k=3, collection_name=collection_name
         )
         fts_results = _search_fts.func(
-            query=query, k=5, collection_name=collection_name
+            query=query, k=3, collection_name=collection_name
         )
 
         rrf_scores: dict[str, float] = {}
