@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
-from app.services.upload_service import handle_file_upload
+from rag_retailbanking_team8.services.upload_service import handle_file_upload
 
 upload_router = APIRouter(prefix="/api/v1", tags=["Upload"])
 

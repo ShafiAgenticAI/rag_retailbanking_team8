@@ -1,16 +1,15 @@
-from app.agents.rag_agent import call_agent
-
+from rag_retailbanking_team8.agents.rag_agent import call_agent
 
 def process_query(request):
     """ receives query and json """
     user_query = request.get("question","")
-    user_details = request.get("input_json",{})
+    customer_details = request.get("customer_details")
 
     if not user_query:
         return {"status":"error","message": "No user query"}
 
     print("passing data to agent...")
-    agent_respone = call_agent(user_query, customer_details= user_details)
+    agent_respone = call_agent(user_query, customer_details=customer_details)
 
     print("agent returned data...")
     return {"status":"success","answer": agent_respone}

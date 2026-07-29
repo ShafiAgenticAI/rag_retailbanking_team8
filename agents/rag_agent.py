@@ -1,6 +1,10 @@
 from langchain.agents import create_agent
 from dotenv import load_dotenv
-from app.tools.tools import _search_vector, _search_fts, _search_hybrid
+from rag_retailbanking_team8.tools.tools import (
+    search_vector,
+    search_fts,
+    search_hybrid,
+)
 from pydantic import BaseModel, Field
 from typing import List
 import uuid
@@ -33,17 +37,20 @@ class FinancialAdvice(BaseModel):
     retrieved_chunks: List[Retrieved_Chunks]
 
 prompt = """ 
-            You are an expert Financial Advisor.
+            You are an expert Financial Advisor with access to three retrieval tools.
 
-            You have access to the following retrieval tools:
+            CRITICAL RULE: If users greets you  (example- Hi/Hello/Hey) or says something conversational DO NOT USE ANY TOOLS. 
+            Reply politely and ask how you can help with related content.
 
-            1. _search_vector
+            Only use a tool if the user asks a specific question requiring information from pdf.
+
+            1. search_vector
             Use for semantic, conceptual, "why", or "how" questions.
 
-            2. _search_fts
+            2. search_fts
             Use for keyword or exact-term queries (for example: SIP, FD, ROI).
 
-            3. _search_hybrid
+            3. search_hybrid
             Use when both semantic understanding and exact keyword matching are required.
 
             Routing rules:
@@ -83,7 +90,7 @@ def create_rag_agent():
     try:
         financial_agent = create_agent(
             model="openai:gpt-5.5",  # brain
-            tools=[_search_vector, _search_fts, _search_hybrid],  # register tool
+            tools=[search_vector, search_fts, search_hybrid],  # register tool
             response_format=FinancialAdvice,
             system_prompt=prompt,  # role
         )
@@ -121,6 +128,7 @@ def call_agent(question, customer_details):
         )
 
         output = response["structured_response"]
+        # print(output)
         return output
 
     except Exception as e:

@@ -1,5 +1,5 @@
 from langchain_core.tools import tool
-from app.core.db import get_retailbankingvector_store
+from rag_retailbanking_team8.core.db import get_retailbankingvector_store
 import requests
 import psycopg
 from psycopg.rows import dict_row
@@ -9,7 +9,7 @@ _raw_conn = os.getenv("PG_CONNECTION_STRING_FTS")
 
 
 @tool
-def _search_vector(query: str, k: int, collection_name: str):
+def search_vector(query: str, k: int, collection_name: str):
     """perform search using vector embeddings"""
     print("Running vector search")
     try:
@@ -22,7 +22,6 @@ def _search_vector(query: str, k: int, collection_name: str):
             }
             for doc in docs
         ]
-        # print("vector out**********", output)
         return output
     except Exception as e:
         print(f"Error occured during vector search: {e}")
@@ -30,7 +29,7 @@ def _search_vector(query: str, k: int, collection_name: str):
 
 
 @tool
-def _search_fts(query: str, k: int, collection_name: str):
+def search_fts(query: str, k: int, collection_name: str):
     """Keyword search against the stored chunks using Postgres' tsvector/tsquery/ts_rank"""
     print("Running FTS Search")
     try:
@@ -53,7 +52,9 @@ def _search_fts(query: str, k: int, collection_name: str):
 
         with psycopg.connect(_raw_conn, row_factory=dict_row) as conn:
             with conn.cursor() as cur:
-                cur.execute(sql, {"query": query, "collection": collection_name, "k": k})
+                cur.execute(
+                    sql, {"query": query, "collection": collection_name, "k": k}
+                )
                 rows = cur.fetchall()
 
         output = [
@@ -65,8 +66,6 @@ def _search_fts(query: str, k: int, collection_name: str):
             for row in rows
         ]
 
-        # print("fts out**********",output)
-
         return output
     except Exception as e:
         print(f"Error occured during FTS search: {e}")
@@ -74,7 +73,7 @@ def _search_fts(query: str, k: int, collection_name: str):
 
 
 @tool
-def _search_hybrid(query: str, k: int, collection_name: str):
+def search_hybrid(query: str, k: int, collection_name: str):
     """Merge vector and fts results using RRF (Reciprocal Rank Fusion)
     Chunks appearing in both search results will rank higher than those in only one
     The constant 60 prevents top-ranked outputs from dominating
@@ -82,10 +81,12 @@ def _search_hybrid(query: str, k: int, collection_name: str):
     """
     print("Running Hybrid Search")
     try:
-        vector_search_results = _search_vector.func(
+        vector_search_results = search_vector.func(
             query=query, k=5, collection_name=collection_name
         )
-        fts_results = _search_fts.func(query=query, k=5, collection_name=collection_name)
+        fts_results = search_fts.func(
+            query=query, k=5, collection_name=collection_name
+        )
 
         rrf_scores: dict[str, float] = {}
         chunk_map: dict[str, dict] = {}

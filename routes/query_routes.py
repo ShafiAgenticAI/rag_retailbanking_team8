@@ -2,14 +2,14 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, Dict
 
-from app.services.query_service import process_query
+from rag_retailbanking_team8.services.query_service import process_query
 
 query_router = APIRouter(prefix="/api/v1", tags=["Query"])
 
 
 class QueryRequest(BaseModel):
     question: str
-    input_json: Optional[Dict] = None
+    customer_details: Optional[dict]
 
 
 @query_router.post("/query")
