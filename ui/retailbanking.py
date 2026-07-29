@@ -13,26 +13,25 @@ COMPLIANCE_QUERY_ENDPOINT = f"{SERVER_URL}/api/v1/query"
 
 
 # ==========================================================
-# Streamlit Page Setup
+# Streamlit Configuration
 # ==========================================================
 
 ui.set_page_config(
-    page_title="Retail Banking Compliance Intelligence",
+    page_title="Retail Banking Intelligence",
     page_icon="🏦",
     layout="wide",
 )
 
 
-ui.title("🏦 Retail Banking Compliance Intelligence")
+ui.title("🏦 Retail Banking Intelligence")
 
 ui.caption(
-    "Review document with Json details provide, "
-    " receive suggested compliance insights from AI."
+    "AI-powered banking assistant using customer profile and knowledge documents."
 )
 
 
 # ==========================================================
-# Session Initialization
+# Session State
 # ==========================================================
 
 if "chat_history" not in ui.session_state:
@@ -40,33 +39,27 @@ if "chat_history" not in ui.session_state:
 
 
 # ==========================================================
-# Backend Communication Functions
+# Backend Calls
 # ==========================================================
 
 
-def send_compliance_question(question, context):
-    """
-    Submit compliance question and optional context to backend.
-    """
+def send_compliance_question(question, customer_details):
 
-    request_body = {
+    payload = {
         "question": question,
-        "input_json": context,
+        "customer_details": customer_details,
     }
 
     return requests.post(
         COMPLIANCE_QUERY_ENDPOINT,
-        data=json.dumps(request_body),
-        headers={"Content-Type": "application/json"},
+        json=payload,
+        timeout=120,
     )
 
 
 def upload_document(document):
-    """
-    Upload regulatory document for processing.
-    """
 
-    upload_payload = {
+    files = {
         "file": (
             document.name,
             document,
@@ -76,103 +69,122 @@ def upload_document(document):
 
     return requests.post(
         DOCUMENT_UPLOAD_ENDPOINT,
-        files=upload_payload,
+        files=files,
+        timeout=120,
     )
 
 
 # ==========================================================
-# Data Processing Helpers
+# Helper Functions
 # ==========================================================
 
 
-def extract_json_context(raw_text):
-    """
-    Convert user-provided JSON text into Python object.
-    """
+def extract_json_context(text):
 
-    if not raw_text.strip():
+    if not text.strip():
         return None
 
     try:
-        return json.loads(raw_text)
+        return json.loads(text)
 
     except json.JSONDecodeError:
         return None
 
 
-def show_document_reference(reference, number):
+def format_agent_response(response):
     """
-    Render source document details and extracted content.
+    Convert JSON response into readable text.
     """
 
-    document_name = reference.get(
-        "file_name",
-        "Unnamed Document",
-    )
+    if response is None:
+        return "No response generated."
 
-    with ui.expander(f"📄 Reference {number}: {document_name}"):
+    # If backend sends JSON string
+    if isinstance(response, str):
 
-        details = {
-            "Document": reference.get("file_name"),
-            "Reference ID": reference.get("document_id"),
-            "Page": reference.get("page_number"),
-            "Section": reference.get("section_number"),
-            "Category": reference.get("regulation_type"),
-            "Search Approach": reference.get("retrieval_method"),
-            "Semantic Match Score": reference.get("vector_score"),
-            "Keyword Match Score": reference.get("fts_score"),
-            "Combined Score": reference.get("hybrid_score"),
-        }
+        try:
+            response = json.loads(response)
 
-        ui.markdown("#### 📋 Document Details")
+        except Exception:
+            return response
 
-        ui.json(details)
+    # If backend sends dictionary
+    if isinstance(response, dict):
 
-        ui.markdown("#### 📝 Extracted Content")
+        readable_text = ""
 
-        ui.info(
-            reference.get(
-                "snippet",
-                "No relevant text available.",
-            )
-        )
+        for key, value in response.items():
+
+            title = key.replace("_", " ").title()
+
+            readable_text += f"### {title}\n"
+
+            if isinstance(value, list):
+
+                for item in value:
+                    readable_text += f"- {item}\n"
+
+            elif isinstance(value, dict):
+
+                for k, v in value.items():
+
+                    readable_text += f"**{k.replace('_',' ').title()}:** {v}\n\n"
+
+            else:
+
+                readable_text += f"{value}\n\n"
+
+        return readable_text
+
+    return str(response)
 
 
 # ==========================================================
-# Document Upload Panel
+# Sidebar
 # ==========================================================
 
 with ui.sidebar:
 
-    ui.header("📁 Retail Banking Knowledge base")
+    ui.header("📁 Knowledge Base")
 
     uploaded_file = ui.file_uploader(
-        "Choose PDF file",
+        "Upload PDF",
         type=["pdf"],
     )
 
     if uploaded_file:
 
         if ui.button(
-            "⬆️ Process Document",
+            "Process Document",
             use_container_width=True,
         ):
 
-            with ui.spinner("Preparing document for analysis..."):
+            with ui.spinner("Processing document..."):
 
-                upload_result = upload_document(uploaded_file)
+                result = upload_document(uploaded_file)
 
-                if upload_result.ok:
+                if result.ok:
 
-                    ui.success("Document processed and added to the knowledge base.")
+                    ui.success("Document processed successfully.")
 
                 else:
 
-                    ui.error(upload_result.text)
+                    ui.error(result.text)
+
+    ui.divider()
+
+    if ui.button(
+        "🗑 Clear Chat",
+        use_container_width=True,
+    ):
+
+        ui.session_state.chat_history = []
+
+        ui.rerun()
 
 
 # ==========================================================
-# Previous Conversation Display
+# Display Previous Chat
 # ==========================================================
 
 for message in ui.session_state.chat_history:
@@ -183,89 +195,158 @@ for message in ui.session_state.chat_history:
 
 
 # ==========================================================
-# Optional Structured Context
+# Customer Details Input
 # ==========================================================
 
-ui.markdown("###### 📑 JSON Context (Optional)")
+ui.subheader("Customer Profile (Optional)")
 
 
-json_text = ui.text_area(
-    "Enter structured information",
-    height=100,
+customer_json = ui.text_area(
+    "Enter customer JSON",
+    height=220,
     placeholder="""
 {
-    "organization": "Retail Banking",
-    "assessment_type": "Regulatory Review",
-    "priority": "High"
+    "customer_id":"CUST001",
+    "age":40,
+    "income":1200000,
+    "employment":"Salaried",
+    "risk_appetite":"Moderate"
 }
 """,
 )
 
 
-structured_context = extract_json_context(json_text)
+customer_details = extract_json_context(customer_json)
 
 
-if json_text.strip():
+if customer_json.strip():
 
-    if structured_context is None:
+    if customer_details:
 
-        ui.warning("⚠️ The JSON format is not valid. Please review the structure.")
+        ui.success("Customer profile loaded.")
 
     else:
 
-        ui.info("✅ Structured context accepted.")
+        ui.error("Invalid JSON format.")
 
 
 # ==========================================================
-# Compliance Conversation
+# Chat Input
 # ==========================================================
 
-user_question = ui.chat_input("Enter your query...")
+question = ui.chat_input("Ask your question...")
 
 
-if user_question:
+if question:
 
     ui.session_state.chat_history.append(
         {
             "role": "user",
-            "message": user_question,
+            "message": question,
         }
     )
 
-    with ui.chat_message(
-        "user",
-        avatar="👤",
-    ):
+    with ui.chat_message("user"):
 
-        ui.markdown(user_question)
+        ui.markdown(question)
 
-    with ui.chat_message(
-        "assistant",
-        avatar="🤖",
-    ):
+    with ui.chat_message("assistant"):
 
-        with ui.spinner("Information is being reviewed and processing..."):
+        with ui.spinner("Analyzing..."):
 
-            response = send_compliance_question(
-                user_question,
-                structured_context,
-            )
+            try:
 
-            if response.ok:
-
-                assistant_reply = response.text or "Unable to generate a response."
-
-                ui.markdown(assistant_reply)
-
-                ui.session_state.chat_history.append(
-                    {
-                        "role": "assistant",
-                        "message": assistant_reply,
-                    }
+                response = send_compliance_question(
+                    question,
+                    customer_details,
                 )
 
-            else:
+                if response.ok:
 
-                ui.error(f"Unable to complete request ({response.status_code})")
+                    api_response = response.json()
 
-                ui.code(response.text)
+                    # query_service returns:
+                    #
+                    # {
+                    #    "status":"success",
+                    #    "answer":{}
+                    # }
+
+                    answer = api_response.get("answer", {})
+
+                    # ======================================
+                    # Display Agent Response ONLY
+                    # ======================================
+
+                    agent_response = answer.get(
+                        "output_response", "No response generated."
+                    )
+
+                    formatted_response = format_agent_response(agent_response)
+
+                    ui.markdown(formatted_response)
+
+                    # ======================================
+                    # Customer Details Dropdown
+                    # ======================================
+
+                    customer = answer.get("customer_details")
+
+                    if customer and customer != "None":
+
+                        with ui.expander("👤 Customer Details"):
+
+                            if isinstance(customer, dict):
+
+                                ui.json(customer)
+
+                            else:
+
+                                ui.write(customer)
+
+                    # ======================================
+                    # Retrieved Chunks Dropdown
+                    # ======================================
+
+                    chunks = answer.get("retrieved_chunks", [])
+
+                    if chunks:
+
+                        with ui.expander("📚 Supporting References"):
+
+                            for index, chunk in enumerate(chunks, start=1):
+
+                                metadata = chunk.get("metadata", {})
+
+                                ui.markdown(f"### Reference {index}")
+
+                                ui.write(
+                                    f"**Document:** {metadata.get('file_name','-')}"
+                                )
+
+                                ui.write(f"**Page:** {metadata.get('page_number','-')}")
+
+                                ui.write(
+                                    f"**Type:** {metadata.get('file_extension','-')}"
+                                )
+
+                                ui.divider()
+
+                                ui.write(chunk.get("content", "No content available."))
+
+                    ui.session_state.chat_history.append(
+                        {
+                            "role": "assistant",
+                            "message": formatted_response,
+                        }
+                    )
+
+                else:
+
+                    ui.error(f"Request failed: {response.status_code}")
+
+                    ui.code(response.text)
+
+            except Exception as error:
+
+                ui.error(f"Error: {error}")
