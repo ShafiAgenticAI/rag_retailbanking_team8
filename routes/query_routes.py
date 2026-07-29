@@ -10,7 +10,7 @@ query_router = APIRouter(prefix="/api/v1", tags=["Query"])
 
 class QueryRequest(BaseModel):
     question: str
-    input_json: Optional[Dict] = None
+    customer_details: Optional[dict]
 
 
 @query_router.post("/query")

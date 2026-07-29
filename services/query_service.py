@@ -1,11 +1,10 @@
 from rag_retailbanking_team8.agents.rag_agent import call_agent
 import json
 
-
 def process_query(request):
-    """Receives query and json and returns plain text content."""
-    user_query = request.get("question", "")
-    user_details = request.get("input_json", {})
+    """ receives query and json """
+    user_query = request.get("question","")
+    customer_details = request.get("customer_details")
 
     if not user_query:
         return "No user query"
@@ -23,10 +22,7 @@ def process_query(request):
         return "Hello! How can I assist you today?"
 
     print("passing data to agent...")
-    agent_response = call_agent(user_query, customer_details=user_details)
-
-    if isinstance(agent_response, dict) and agent_response.get("status") == "error":
-        return agent_response.get("message", "Agent failed to provide a response.")
+    agent_respone = call_agent(user_query, customer_details=customer_details)
 
     print("agent returned data...")
     if isinstance(agent_response, str):

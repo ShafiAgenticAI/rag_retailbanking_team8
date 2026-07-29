@@ -1,7 +1,6 @@
 from pathlib import Path
 from rag_retailbanking_team8.ingestion.ingestion import ingest_retailbankingpdf
 
-
 def handle_file_upload(filename, file_bytes):
     destination = f"rag_retailbanking_team8/data/{filename}"
 
