@@ -14,7 +14,9 @@ def get_embeddings():
     return OpenAIEmbeddings(model=os.getenv("EMBEDDING_MODEL"), dimensions=1536)
 
 
-def get_retailbankingvector_store(collection_name: str, pre_delete_collection: bool = False):
+def get_retailbankingvector_store(
+    collection_name: str, pre_delete_collection: bool = False
+):
     return PGVector(
         collection_name=collection_name,
         connection=PG_CONNECTION,

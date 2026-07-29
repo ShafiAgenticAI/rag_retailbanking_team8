@@ -6,10 +6,10 @@ def process_query(request):
     customer_details = request.get("customer_details")
 
     if not user_query:
-        return {"status":"error","message": "No user query"}
+        return {"status": "error", "message": "No user query"}
 
     print("passing data to agent...")
     agent_respone = call_agent(user_query, customer_details=customer_details)
 
     print("agent returned data...")
-    return {"status":"success","answer": agent_respone}
+    return {"status": "success", "answer": agent_respone}
