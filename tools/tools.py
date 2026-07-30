@@ -4,6 +4,13 @@ import requests
 import psycopg
 from psycopg.rows import dict_row
 import os
+import logging
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s -  %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
 
 _raw_conn = os.getenv("PG_CONNECTION_STRING_FTS")
 
@@ -11,10 +18,26 @@ _raw_conn = os.getenv("PG_CONNECTION_STRING_FTS")
 @tool
 def search_vector(query: str, k: int, collection_name: str):
     """perform search using vector embeddings"""
-    print("Running vector search")
+
+    if not query:
+        logger.warning("Empty query provided.")
+        return []
+
+    if not collection_name:
+        logger.warning("Empty collection_name provided.")
+        return []
+
+    if not isinstance(k, int) or k <= 0:
+        logger.error("Invalid parameter k, must be a positive integer")
+        return []
+
     try:
+        logger.info("Running vector search...")
+
         vector_store = get_retailbankingvector_store(collection_name)
+
         docs = vector_store.similarity_search(query, k)
+
         output = [
             {
                 "content": doc.page_content,
@@ -22,16 +45,30 @@ def search_vector(query: str, k: int, collection_name: str):
             }
             for doc in docs
         ]
+
         return output
     except Exception as e:
-        print(f"Error occured during vector search: {e}")
+        logger.error(f"Error occured during vector search: {e}")
         return []
 
 
 @tool
 def search_fts(query: str, k: int, collection_name: str):
     """Keyword search against the stored chunks using Postgres' tsvector/tsquery/ts_rank"""
-    print("Running FTS Search")
+    if not query:
+        logger.warning("Empty query provided.")
+        return []
+
+    if not collection_name:
+        logger.warning("Empty collection_name provided.")
+        return []
+
+    if not isinstance(k, int) or k <= 0:
+        logger.error("Invalid parameter k, must be a positive integer")
+        return []
+
+    logger.info("Running FTS Search...")
+
     try:
         sql = """
         SELECT
@@ -50,25 +87,30 @@ def search_fts(query: str, k: int, collection_name: str):
         LIMIT %(k)s;
     """
 
-        with psycopg.connect(_raw_conn, row_factory=dict_row) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    sql, {"query": query, "collection": collection_name, "k": k}
-                )
-                rows = cur.fetchall()
+        try:
+            with psycopg.connect(_raw_conn, row_factory=dict_row) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        sql, {"query": query, "collection": collection_name, "k": k}
+                    )
+                    rows = cur.fetchall()
 
-        output = [
-            {
-                "content": row["content"],
-                "metadata": row["metadata"],
-                "fts_rank": round(float(row["fts_rank"]), 4),
-            }
-            for row in rows
-        ]
+            output = [
+                {
+                    "content": row["content"],
+                    "metadata": row["metadata"],
+                    "fts_rank": round(float(row["fts_rank"]), 4),
+                }
+                for row in rows
+            ]
+        except Exception as e:
+            logger.error("Database extraction failure during FTS search.")
+            output = []
 
         return output
+
     except Exception as e:
-        print(f"Error occured during FTS search: {e}")
+        logger.error(f"Error occured during FTS search: {e}")
         return []
 
 
@@ -79,14 +121,34 @@ def search_hybrid(query: str, k: int, collection_name: str):
     The constant 60 prevents top-ranked outputs from dominating
     How RRF scores for a chunk = sum of 1/(rank + 60)
     """
-    print("Running Hybrid Search")
+    if not query:
+        logger.warning("Empty query provided.")
+        return []
+
+    if not collection_name:
+        logger.warning("Empty collection_name provided.")
+        return []
+
+    if not isinstance(k, int) or k <= 0:
+        logger.error("Invalid parameter k, must be a positive integer")
+        return []
+
+    logger.info("Running Hybrid Search...")
+
     try:
-        vector_search_results = search_vector.func(
-            query=query, k=5, collection_name=collection_name
-        )
-        fts_results = search_fts.func(
-            query=query, k=5, collection_name=collection_name
-        )
+        try:
+            vector_search_results = search_vector.func(
+                query=query, k=5, collection_name=collection_name
+            )
+        except Exception as e:
+            logger.error("In hybrid search tool - vector search failed {e} ")
+
+        try:
+            fts_results = search_fts.func(
+                query=query, k=5, collection_name=collection_name
+            )
+        except Exception as e:
+            logger.error("In hybrid search tool - fts search failed {e} ")
 
         rrf_scores: dict[str, float] = {}
         chunk_map: dict[str, dict] = {}
@@ -116,5 +178,5 @@ def search_hybrid(query: str, k: int, collection_name: str):
         # print(ranked)
         return [chunk_map[key] for key, _ in ranked[:k]]
     except Exception as e:
-        print(f"Error occured during hybrid search: {e}")
+        logger.error(f"Error occured during hybrid search: {e}")
         return []

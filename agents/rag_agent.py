@@ -1,25 +1,43 @@
 from langchain.agents import create_agent
 from dotenv import load_dotenv
+from pydantic import BaseModel, Field
+from typing import List
+from langchain_core.chat_history import InMemoryChatMessageHistory
+from langchain_core.messages import HumanMessage
 from rag_retailbanking_team8.tools.tools import (
     search_vector,
     search_fts,
     search_hybrid,
 )
-from pydantic import BaseModel, Field
-from typing import List
-import uuid
+import logging
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s -  %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 # load env variables
 if not load_dotenv():
-    print("No .env file found.")
+    logger.warning("No .env file found.")
 
-# Session ID
-try:
-    session_id = str(uuid.uuid4())
-except Exception as e:
-    print(f"Failed to generate session id: {e}")
+# ===========================================================
+#     STORE SESSION HISTORY
+# ===========================================================
+store = {}
 
 
+def get_session_history(session_id: str):
+    try:
+        if session_id not in store:
+            store[session_id] = InMemoryChatMessageHistory()
+        return store[session_id]
+    except Exception as e:
+        logger.error(f"session history error for {session_id} - {e}")
+
+
+# ===========================================================
+#     PYDANTIC SCHEMAS
+# ===========================================================
 class Metadata(BaseModel):
     page_number: int
     file_name: str
@@ -32,10 +50,15 @@ class Retrieved_Chunks(BaseModel):
 
 
 class FinancialAdvice(BaseModel):
-    User_Query: str = Field(description="customer query")
-    customer_profile: str
+    user_query: str = Field(description="customer query")
+    customer_details: str
     output_response: str = Field(description="recommendation provided")
     retrieved_chunks: List[Retrieved_Chunks]
+
+
+# ===========================================================
+#     PROMPT TEMPLATE
+# ===========================================================
 
 
 prompt = """ 
@@ -47,7 +70,7 @@ prompt = """
             Only use a tool if the user asks a specific question requiring information from pdf.
 
             1. search_vector
-            Use for semantic, conceptual, "why", or "how" questions.
+            Use for semantic, conceptual and understanding questions.
 
             2. search_fts
             Use for keyword or exact-term queries (for example: SIP, FD, ROI).
@@ -84,50 +107,56 @@ prompt = """
             - Limit the response to 3-6 short sentences (or 5 bullet points if a list is more appropriate).
             - Include only actionable recommendations that are directly relevant to the user's question.
 
-            Only answer financial questions. If the request is unrelated to finance, politely decline.
-
             """
 
 
+# ===========================================================
+#     AGENT FUNCTIONS
+# ===========================================================
+
+
 def create_rag_agent():
+    """Create the agent"""
+
     try:
         financial_agent = create_agent(
-            model="openai:gpt-5.5",  # brain
-            tools=[search_vector, search_fts, search_hybrid],  # register tool
+            model="openai:gpt-5.5",
+            tools=[search_vector, search_fts, search_hybrid],
             response_format=FinancialAdvice,
-            system_prompt=prompt,  # role
+            system_prompt=prompt,
         )
+
         return financial_agent
+    
     except Exception as e:
-        print(f"Failed to create RAG agent: {e}")
+        logger.error(f"Failed to create RAG agent: {e}")
 
 
-# Create the agent once at import time so repeated requests reuse the same instance.
-_cached_rag_agent = create_rag_agent()
-
-
-def call_agent(question, customer_details):
-    agent = _cached_rag_agent
-    if agent is None:
-        error_msg = "Failed to create RAG agent."
-        print(error_msg)
-        return {"status": "error", "message": error_msg}
+def call_agent(question: str, customer_details: dict, session_id: str):
+    """Executes the agent call"""
 
     try:
+        agent = create_rag_agent()
+
+        try:
+            history = get_session_history(session_id)
+        except Exception as e:
+            logger.error(
+                f"Failed to get session history for session_id {session_id} - {e}"
+            )
+
+        user_content = f"""
+        User question: {question}
+
+        Customer financial details in JSON:
+        {customer_details}
+        """
+
+        messages = history.messages + [HumanMessage(content=user_content)]
+
         response = agent.invoke(
-            {
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": f"""
-                        User question: {question}
-                        Customer financial details in json :{customer_details}
-                        """,
-                    }
-                ]
-            },
+            {"messages": messages},
             config={
-                "configurable": {"session_id": session_id},
                 "run_name": "retailbanking_knowledge_base",
                 "tags": ["chatbot", "user-query"],
                 "metadata": {
@@ -138,32 +167,20 @@ def call_agent(question, customer_details):
             },
         )
 
+        history.add_message(HumanMessage(content=user_content))
+
+        history.add_message(response["messages"][-1])
+
         output = response["structured_response"]
-        # print(output)
+
         return output
 
     except Exception as e:
-        print(f"Failed to invoke agent : {e}")
-        return {"status": "error", "message": str(e)}
+        logger.error(f"Failed to invoke agent : {e}")
+        return {
+            "status": "error",
+            "message": "Internal server error. Please try again later.",
+        }
 
 
-# question = """Should I invest in FD or debt funds for buying a car in 2 years?"""
-# # question = """Tell about mutual funds"""
-
-# customer_details = {
-#     "customer_id": "CUST001",
-#     "age": 40,
-#     "income": 1200000,
-#     "employment": "Salaried",
-#     "risk_appetite": "Moderate",
-#     "goals": [{"goal": "Car Purchase", "target_amount": 1000000, "years": 2}],
-#     "existing_investments": {"equity": 300000, "debt": 200000, "fd": 100000},
-#     "liabilities": {"home_loan": 2000000},
-#     "monthly_expenses": 50000,
-#     "credit_score": 750,
-# }
-
-# result = call_agent(question, customer_details)  # call agent
-# print(result.model_dump_json(indent=2))
-
-# uv run python -m app.agents.rag_agent
+# uv run python -m rag_retailbanking_team8.agents.rag_agent
