@@ -318,7 +318,6 @@ if question:
                     # ======================================
 
                     customer = answer.get("customer_details")
-                    print("customer", customer)
                     if customer and customer != "None":
 
                         with ui.expander("👤 Customer Details"):
