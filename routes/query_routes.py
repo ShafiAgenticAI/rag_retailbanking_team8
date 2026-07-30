@@ -1,23 +1,63 @@
+import logging
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional, Dict
+from typing import Optional
 
-from rag_retailbanking_team8.services.query_service import process_query
+from app.services.query_service import QueryService
+
+<<<<<<< Updated upstream
+router = APIRouter(prefix="/api/v1", tags=["Query"])
+=======
+logger = logging.getLogger(__name__)
 
 query_router = APIRouter(prefix="/api/v1", tags=["Query"])
+>>>>>>> Stashed changes
 
 
 class QueryRequest(BaseModel):
     question: str
-    customer_details: Optional[dict]
-    session_id: str
+    input_json: Optional[Dict] = None
 
 
-@query_router.post("/query")
+@router.post("/query")
 async def query(request: QueryRequest):
-    request_dict = request.model_dump()
+<<<<<<< Updated upstream
+
     try:
-        return process_query(request_dict)
+        return QueryService.process_query(request)
+=======
+    logger.info("Received query request. Session ID: %s", request.session_id)
+
+    request_dict = request.model_dump()
+
+    try:
+        logger.debug("Processing query for session: %s", request.session_id)
+
+        response = process_query(request_dict)
+
+        logger.info(
+            "Query processed successfully. Session ID: %s",
+            request.session_id,
+        )
+
+        return response
+
+    except HTTPException:
+        logger.exception(
+            "HTTPException occurred while processing query. Session ID: %s",
+            request.session_id,
+        )
+        raise
+>>>>>>> Stashed changes
 
     except Exception as ex:
-        raise HTTPException(status_code=500, detail=str(ex))
+        logger.exception(
+            "Unexpected error while processing query. Session ID: %s",
+            request.session_id,
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(ex),
+        )
