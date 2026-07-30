@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from typing import Optional, Dict
 
@@ -11,14 +10,14 @@ query_router = APIRouter(prefix="/api/v1", tags=["Query"])
 class QueryRequest(BaseModel):
     question: str
     customer_details: Optional[dict]
+    session_id: str
 
 
 @query_router.post("/query")
 async def query(request: QueryRequest):
     request_dict = request.model_dump()
     try:
-        content = process_query(request_dict)
-        return PlainTextResponse(content=content, status_code=200)
+        return process_query(request_dict)
 
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))

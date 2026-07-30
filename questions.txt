@@ -1,0 +1,40 @@
+FTS --
+What is a SIP and how does it help a salaried investor like me? 
+What does NPS corpus work at retirement? 
+
+Vector --
+How often should I review my investment portfolio?
+Can I invest in international mutual funds from India? What are the benefits?  
+
+
+What mutual funds are suitable for a 35-year-old salaried customer with moderate risk appetite?
+What is the best SIP strategy for a customer targeting ₹50 lakh retirement corpus in 15 years?
+Given my current portfolio, am I over-exposed to equity risk?
+
+Should I invest in FD or debt funds given my current income and short-term goal of buying a car?
+
+{
+  "customer_id": "CUST001",
+  "age": 40,
+  "income": 1200000,
+  "employment": "Salaried",
+  "risk_appetite": "Moderate",
+  "goals": [
+    {
+      "goal": "Car Purchase",
+      "target_amount": 1000000,
+      "years": 2
+    }
+  ],
+  "existing_investments": {
+    "equity": 300000,
+    "debt": 200000,
+    "fd": 100000
+  },
+  "liabilities": {
+    "home_loan": 2000000
+  },
+  "monthly_expenses": 50000,
+  "credit_score": 750
+}
+

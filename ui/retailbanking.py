@@ -1,6 +1,7 @@
 import json
 import requests
 import streamlit as ui
+import uuid
 
 # ==========================================================
 # Application Configuration
@@ -33,6 +34,8 @@ ui.caption(
 # ==========================================================
 # Session State
 # ==========================================================
+if "session_id" not in ui.session_state:
+    ui.session_state.session_id = str(uuid.uuid4())
 
 if "chat_history" not in ui.session_state:
     ui.session_state.chat_history = []
@@ -48,6 +51,7 @@ def send_compliance_question(question, customer_details):
     payload = {
         "question": question,
         "customer_details": customer_details,
+        "session_id": ui.session_state.session_id,
     }
 
     return requests.post(
@@ -180,6 +184,8 @@ with ui.sidebar:
 
         ui.session_state.chat_history = []
 
+        ui.session_state.session_id = str(uuid.uuid4())
+
         ui.rerun()
 
 
@@ -291,7 +297,7 @@ if question:
                     # ======================================
 
                     customer = answer.get("customer_details")
-
+                    print("customer", customer)
                     if customer and customer != "None":
 
                         with ui.expander("👤 Customer Details"):
