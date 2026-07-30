@@ -3,6 +3,7 @@ import requests
 from requests.exceptions import RequestException
 import streamlit as ui
 import uuid
+import pypdf
 
 # ==========================================================
 # Application Configuration
@@ -10,7 +11,7 @@ import uuid
 
 SERVER_URL = "http://127.0.0.1:8000"
 
-DOCUMENT_UPLOAD_ENDPOINT = f"{SERVER_URL}/api/v1/upload/"
+DOCUMENT_UPLOAD_ENDPOINT = f"{SERVER_URL}/api/v1/upload"
 COMPLIANCE_QUERY_ENDPOINT = f"{SERVER_URL}/api/v1/query"
 
 
@@ -114,7 +115,7 @@ def format_agent_response(response):
     """
 
     if response is None:
-        return "No response generated."
+        return "Couldn’t complete this. Try again"
 
     # If backend sends JSON string
     if isinstance(response, str):
