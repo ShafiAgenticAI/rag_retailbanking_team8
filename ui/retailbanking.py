@@ -1,7 +1,9 @@
 import json
 import requests
+from requests.exceptions import RequestException
 import streamlit as ui
 import uuid
+import pypdf
 
 # ==========================================================
 # Application Configuration
@@ -9,7 +11,7 @@ import uuid
 
 SERVER_URL = "http://127.0.0.1:8000"
 
-DOCUMENT_UPLOAD_ENDPOINT = f"{SERVER_URL}/api/v1/upload/"
+DOCUMENT_UPLOAD_ENDPOINT = f"{SERVER_URL}/api/v1/upload"
 COMPLIANCE_QUERY_ENDPOINT = f"{SERVER_URL}/api/v1/query"
 
 
@@ -54,11 +56,17 @@ def send_compliance_question(question, customer_details):
         "session_id": ui.session_state.session_id,
     }
 
-    return requests.post(
-        COMPLIANCE_QUERY_ENDPOINT,
-        json=payload,
-        timeout=120,
-    )
+    try:
+        response = requests.post(
+            COMPLIANCE_QUERY_ENDPOINT,
+            json=payload,
+            timeout=120,
+        )
+        return response
+
+    except RequestException as error:
+        ui.error(f"Unable to submit question: {error}")
+        return None
 
 
 def upload_document(document):
@@ -71,11 +79,17 @@ def upload_document(document):
         )
     }
 
-    return requests.post(
-        DOCUMENT_UPLOAD_ENDPOINT,
-        files=files,
-        timeout=120,
-    )
+    try:
+        response = requests.post(
+            DOCUMENT_UPLOAD_ENDPOINT,
+            files=files,
+            timeout=120,
+        )
+        return response
+
+    except RequestException as error:
+        ui.error(f"File upload failed: {error}")
+        return None
 
 
 # ==========================================================
@@ -101,7 +115,7 @@ def format_agent_response(response):
     """
 
     if response is None:
-        return "No response generated."
+        return "Couldn’t complete this. Try again"
 
     # If backend sends JSON string
     if isinstance(response, str):
@@ -167,13 +181,42 @@ with ui.sidebar:
 
                 result = upload_document(uploaded_file)
 
-                if result.ok:
+                if result is None:
+                    ui.error("Unable to upload document due to a network error.")
 
+                elif result.ok:
                     ui.success("Document processed successfully.")
 
                 else:
-
                     ui.error(result.text)
+
+    ui.subheader("Customer Profile (Optional)")
+
+    customer_json = ui.text_area(
+        "Enter customer JSON",
+        height=220,
+        placeholder="""
+{
+    "customer_id":"CUST001",
+    "age":40,
+    "income":1200000,
+    "employment":"Salaried",
+    "risk_appetite":"Moderate"
+}
+""",
+    )
+
+    customer_details = extract_json_context(customer_json)
+
+    if customer_json.strip():
+
+        if customer_details:
+
+            ui.success("Customer profile loaded.")
+
+        else:
+
+            ui.error("Invalid JSON format.")
 
     ui.divider()
 
@@ -201,42 +244,6 @@ for message in ui.session_state.chat_history:
 
 
 # ==========================================================
-# Customer Details Input
-# ==========================================================
-
-ui.subheader("Customer Profile (Optional)")
-
-
-customer_json = ui.text_area(
-    "Enter customer JSON",
-    height=220,
-    placeholder="""
-{
-    "customer_id":"CUST001",
-    "age":40,
-    "income":1200000,
-    "employment":"Salaried",
-    "risk_appetite":"Moderate"
-}
-""",
-)
-
-
-customer_details = extract_json_context(customer_json)
-
-
-if customer_json.strip():
-
-    if customer_details:
-
-        ui.success("Customer profile loaded.")
-
-    else:
-
-        ui.error("Invalid JSON format.")
-
-
-# ==========================================================
 # Chat Input
 # ==========================================================
 
@@ -258,7 +265,7 @@ if question:
 
     with ui.chat_message("assistant"):
 
-        with ui.spinner("Analyzing..."):
+        with ui.spinner("Generating insights..."):
 
             try:
 
@@ -267,25 +274,39 @@ if question:
                     customer_details,
                 )
 
-                if response.ok:
+                if response is None:
+                    ui.error(
+                        "Unable to contact the compliance service. Please try again later."
+                    )
 
-                    api_response = response.json()
+                elif response.ok:
 
-                    # query_service returns:
-                    #
-                    # {
-                    #    "status":"success",
-                    #    "answer":{}
-                    # }
+                    try:
+                        api_response = response.json()
+                    except ValueError as error:
+                        ui.error(f"Invalid response from server: {error}")
+                        api_response = None
 
-                    answer = api_response.get("answer", {})
+                    if api_response is not None:
+                        # query_service returns:
+                        #
+                        # {
+                        #    "status":"success",
+                        #    "answer":{}
+                        # }
+
+                        answer = api_response.get("answer", {})
+
+                        # ======================================
+                        # Display Agent Response ONLY
+                        # ======================================
 
                     # ======================================
                     # Display Agent Response ONLY
                     # ======================================
 
                     agent_response = answer.get(
-                        "output_response", "No response generated."
+                        "output_response", "Couldn’t complete this. Try again. ."
                     )
 
                     formatted_response = format_agent_response(agent_response)

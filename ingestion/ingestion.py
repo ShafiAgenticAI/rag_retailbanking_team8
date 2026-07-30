@@ -8,6 +8,7 @@
 # save the vector embeddings and original text in db
 
 # uv add python-dotenv langchain-community pypdf
+import logging
 from dotenv import load_dotenv
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -16,47 +17,70 @@ from rag_retailbanking_team8.core.db import get_retailbankingvector_store
 import os
 
 load_dotenv()
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+)
 
 
 def ingest_retailbankingpdf(file_path):
-    print("Ingestion Started")
+    logging.info("Ingestion Started for %s", file_path)
 
-    # 1 load pdf
-    loader = PyPDFLoader(file_path)
-    docs = loader.load()
+    try:
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
 
-    # 2. Metadata enrichment (for citataion)
-    for doc in docs:
-        doc.metadata.update(
-            {
-                "source": file_path,
-                "document_extension": "pdf",
-                "page": doc.metadata.get("page"),
-                "last_updated": os.path.getmtime(file_path),
-            }
+        # 1 load pdf
+        loader = PyPDFLoader(file_path)
+        docs = loader.load()
+
+        if not docs:
+            raise ValueError(f"No documents extracted from {file_path}")
+
+        # 2. Metadata enrichment (for citataion)
+        for doc in docs:
+            doc.metadata.update(
+                {
+                    "source": file_path,
+                    "document_extension": "pdf",
+                    "page": doc.metadata.get("page"),
+                    "last_updated": os.path.getmtime(file_path),
+                }
+            )
+
+        logging.info("Loaded %d documents from PDF", len(docs))
+        logging.info("Before Chunking")
+
+        # 3. Chunking
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,  # up to 1000 characters
+            chunk_overlap=200,  # up to 200 characters
         )
 
-    print(docs)
-    print("Before Chunking")
+        chunks = splitter.split_documents(docs)
+        logging.info("Total Chunks: %d", len(chunks))
 
-    # 3. Chunking
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=2000,  # upto 2000 characters
-        chunk_overlap=400,  # upto 400 characters
-    )
+        # 4 load the embedding model & 5 generate the embeddings
+        # 6. save it in vector db
+        vector_store = get_retailbankingvector_store(
+            collection_name="retailbanking_knowledge_base"
+        )
+        vector_store.add_documents(chunks)
 
-    chunks = splitter.split_documents(docs)
-    print("Total Chunks")
-    print(len(chunks))
+        logging.info("Ingestion Completed")
+        return True
 
-    # 4 load the embedding model & 5 generate the embeddings
-    # 6. save it in vector db
-    vector_store = get_retailbankingvector_store(
-        collection_name="retailbanking_knowledge_base"
-    )
-    vector_store.add_documents(chunks)
+    except FileNotFoundError as error:
+        logging.error("Ingestion Error: %s", error)
+        return False
 
-    print("Ingestion Completed")
+    except ValueError as error:
+        logging.error("Ingestion Error: %s", error)
+        return False
+
+    except Exception as error:
+        logging.exception("Unexpected ingestion failure for %s", file_path)
+        return False
 
 
 def ingest_document(file_path, customer_id=None, document_id=None):
